@@ -81,7 +81,7 @@ jobs:
       
       - name: Deploy to Cloud Run
         if: inputs.environment == 'Production'
-        id: deploy
+        id: deploy-prod
         uses: google-github-actions/deploy-cloudrun@v0
         with:
           service: ${{ env.SERVICE }}
