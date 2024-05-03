@@ -1,0 +1,43 @@
+# openapi2-run.yaml
+swagger: '2.0'
+info:
+  title: Alignmt POC
+  description: Sample API on API Gateway with a Cloud Run backend
+  version: 1.0.0
+schemes:
+- https
+produces:
+- application/json
+paths:
+  /token:
+    get:
+      summary: token
+      operationId: token
+      x-google-backend:
+        address: https://helloworld-jdkfqrncga-uc.a.run.app/token
+      responses:
+        '200':
+          description: A successful response
+          schema:
+            type: string
+  /hello:
+    get:
+      summary: Cloud Run hello world
+      operationId: hello
+      x-google-backend:
+        address: https://helloworld-jdkfqrncga-uc.a.run.app/hello
+      security:
+        - alignmt: []
+      responses:
+        '200':
+          description: A successful response
+          schema:
+            type: string
+securityDefinitions:
+  alignmt:
+    authorizationUrl: ""
+    flow: "implicit"
+    type: "oauth2"
+    x-google-issuer: "alignmtsa@sound-health-5c414.iam.gserviceaccount.com"
+    x-google-jwks_uri: "https://www.googleapis.com/robot/v1/metadata/x509/alignmtsa@sound-health-5c414.iam.gserviceaccount.com"
+    x-google-audiences: "alignmt-poc-a89il31j.uc.gateway.dev"

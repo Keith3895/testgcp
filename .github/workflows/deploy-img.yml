@@ -1,0 +1,94 @@
+name: Build docker image
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy.'
+        required: true
+        type: choice
+        options:
+        - Develop
+        - Staging
+        - Production
+      tags:
+        description: 'the Tag that has to be deployed.'
+        required: true
+        type: string
+
+
+env:
+ ARTIFACT_PROJECT_ID: artefact-reps # TODO: update Google Cloud project id
+ GAR_LOCATION: asia-south1  # TODO: update Artifact Registry location
+ SERVICE: hello_test
+
+jobs:
+  setup-job:
+    runs-on: ubuntu-latest
+    outputs:
+      PROJECT_ID: ${{ steps.set-variables.outputs.PROJECT_ID }}
+      REGION1: ${{ steps.set-variables.outputs.REGION1 }}
+      REGION2: ${{ steps.set-variables.outputs.REGION2 }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set Env Values
+        id: set-variables
+        run: |
+          if [ ${{ inputs.environment }} == 'Production' ]; then
+            echo "PROJECT_ID=crun-ap" >> $GITHUB_OUTPUT
+            echo "REGION1=asia-south1" >> $GITHUB_OUTPUT
+            echo "REGION2=asia-south2" >> $GITHUB_OUTPUT
+          else
+            echo "REGION1=asia-south1" >> $GITHUB_OUTPUT
+          fi
+          if [ ${{ inputs.environment }} == 'Staging' ]; then
+            echo "PROJECT_ID=crun-ap" >> $GITHUB_OUTPUT
+          fi
+          if [ ${{ inputs.environment }} == 'Develop' ]; then
+            echo "PROJECT_ID=crun-ap" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+  deploy:
+    name: "Building docker image"
+    needs: [setup-job]
+    env:
+      PROJECT_ID: ${{ needs.setup-job.outputs.PROJECT_ID }}
+      REGION1: ${{ needs.setup-job.outputs.REGION1 }}
+      REGION2: ${{ needs.setup-job.outputs.REGION2 }}
+    # Add 'id-token' with the intended permissions for workload identity federation
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Google Auth
+        id: auth
+        uses: 'google-github-actions/auth@v0'
+        with:
+          credentials_json: '${{ secrets.GCP_ARTIFACT_CREDENTIALS }}'
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v0
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION1 }}
+          # NOTE: If using a pre-built image, update the image name here
+          image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.ARTIFACT_PROJECT_ID }}/${{ env.SERVICE }}:${{ inputs.tags }}
+      
+      - name: Deploy to Cloud Run
+        if: inputs.environment == 'Production'
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v0
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION2 }}
+          # NOTE: If using a pre-built image, update the image name here
+          image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.ARTIFACT_PROJECT_ID }}/${{ env.SERVICE }}:${{ inputs.tags }}
+
+      # If required, use the Cloud Run url output in later steps
+#      - name: Show Output
+#        run: echo ${{ steps.deploy.outputs.url }}
