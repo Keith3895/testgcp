@@ -1,4 +1,4 @@
-name: deploy docker image
+name: deploy the docker image
 
 on:
   workflow_dispatch:
@@ -15,7 +15,6 @@ on:
         description: 'the Tag that has to be deployed.'
         required: true
         type: string
-
 
 env:
  ARTIFACT_PROJECT_ID: artefact-reps # TODO: update Google Cloud project id
